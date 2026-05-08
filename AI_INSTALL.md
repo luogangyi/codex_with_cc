@@ -12,6 +12,7 @@
 6. 默认用户要的是“直接装好并汇报结果”，不是“先出方案再等批准”。
 7. 默认按上游仓库原样接入，不要擅自混入目标项目专属示例、业务规则、验证命令或定制说明。
 8. 只有用户明确要求你“顺手定制”或“改成项目特化版本”时，才允许额外改工作流文档。
+9. **唯一必须在安装前主动向用户提问的是**：“您希望使用 Claude Code 配置的默认模型，还是指定一个自定义模型？如果要自定义模型，请提供模型名称。”
 
 下面这些问题，默认不要问：
 
@@ -76,8 +77,11 @@
 
 ```text
 install_codex_with_cc.ps1
+install_codex_with_cc.sh
 codex_with_cc/CODEX_WITH_CC.md
+codex_with_cc/CODEX_WITH_CC_MACOS.md
 codex_with_cc/windows_scripts/delegate_to_claude.ps1
+codex_with_cc/macos_scripts/delegate_to_claude.sh
 ```
 
 4. 按目标项目根目录直属文档目录选择工作流安装位置。
@@ -89,20 +93,25 @@ codex_with_cc/windows_scripts/delegate_to_claude.ps1
 安装脚本还应确保 `.codex/codex_with_cc/tasks` 存在，用于放委派任务文件；实际任务文件应按 `.codex/codex_with_cc/tasks/<yyyyMMdd>/<HHmmssfff>-<short-id>-<task-file>.md` 创建，避免同一天多个会话或多个子代理任务使用固定文件名互相覆盖；不要再把任务文件放进 `<workflow-root>` 这种会进版本库的目录里，也不要再依赖 `.gitkeep` 之类的占位文件。
 同时应确保目标项目的 `.gitignore` 包含 `.codex/codex_with_cc`，避免本工作流的委派任务和运行产物被误提交，同时不影响目标项目 `.codex` 下其他共用内容。
 
-5. 更新目标项目根目录的 `AGENTS.md`。没有就创建，有就追加托管块，不要删旧内容。除非用户明确禁止，否则不要为这一步单独征求确认。
+5. **配置模型参数**：根据安装前用户的回答，如果用户提供了自定义模型名称，Agent 必须在文件复制或安装脚本执行完成后，主动使用工具去修改目标项目里的脚本：
+   - **macOS/Linux**：修改 `<workflow-root>/macos_scripts/delegate_to_claude.sh`，将其中的 `MODEL=""` 或对应的变量改写为 `MODEL="用户指定的模型名称"`。
+   - **Windows**：修改 `<workflow-root>/windows_scripts/delegate_to_claude.ps1` 和 `<workflow-root>/windows_scripts/claude_delegate_backend_helpers.ps1` 中对应的 `[string]$Model = ''` 默认值为 `[string]$Model = '用户指定的模型名称'`。
+   - 如果用户选择“默认模型”，则不进行任何修改，保持空值以触发 Claude Code 自动使用全局配置的默认模型。
+
+6. 更新目标项目根目录的 `AGENTS.md`。没有就创建，有就追加托管块，不要删旧内容。除非用户明确禁止，否则不要为这一步单独征求确认。
 
 推荐托管块：
 
 ```markdown
 <!-- BEGIN CODEX_WITH_CC -->
 Codex with Claude Code workflow: before using this workflow, read `<workflow-root>/CODEX_WITH_CC.md`.
-If the task involves child agents, subagents, delegation, or any worker-execution step, you must read that file first and follow the custom `Codex main thread -> Codex child agent -> delegate_to_claude.* -> Claude Code CLI` workflow defined there.
+If the task involves child agents, subagents, delegation, , 代理、子代理、子流程 or any worker-execution step, you must read that file first and follow the custom `Codex main thread -> Codex child agent -> delegate_to_claude.* -> Claude Code CLI` workflow defined there.
 <!-- END CODEX_WITH_CC -->
 ```
 
-6. 检查目标项目自己的规则文件。如果存在强约束，以目标项目规则为准；不要再为本工作流额外生成独立的 host-rules 或 project-memory 文档。
-7. 运行当前平台可用的验证。能直接跑就直接跑，不要先问用户“是否现在验证”。
-8. 向用户报告改动文件、验证结果、使用方式和剩余限制；把确认放在安装之后，而不是安装之前。
+7. 检查目标项目自己的规则文件。如果存在强约束，以目标项目规则为准；不要再为本工作流额外生成独立的 host-rules 或 project-memory 文档。
+8. 运行当前平台可用的验证。能直接跑就直接跑，不要先问用户“是否现在验证”。
+9. 向用户报告改动文件、模型配置结果、验证结果、使用方式和剩余限制；把确认放在安装之后，而不是安装之前。
 
 ## Windows 安装
 
@@ -145,34 +154,41 @@ pwsh -NoProfile -File .\<workflow-root>\windows_scripts\run_real_delegate_chain_
 
 ## macOS 安装
 
-macOS 不要照抄 Windows PowerShell 命令给用户。应该把工作流迁移成 macOS 原生命令。
+如果当前平台是 macOS 或 Linux，并且可以运行 bash，优先使用源仓库的 macOS 安装脚本。
 
-macOS 支持尚未实现；需要由安装 AI 参考源仓库里的 `codex_with_cc/windows_scripts` 行为，自行迁移为目标项目 `<workflow-root>/macos_scripts` 下的原生 macOS 脚本。
-
-执行原则：
-
-1. 使用 `bash` 或 `zsh`。
-2. 使用 Unix 路径。
-3. 需要脚本入口时生成 `.sh` 或等价可执行脚本。
-4. 需要执行权限时使用 `chmod +x`。
-5. 保留原工作流语义，不要为了迁移改掉主线程/子代理边界。
-
-建议动作：
-
-1. 复制源仓库的 `codex_with_cc` 到目标项目按规则选出的 `<workflow-root>`。
-2. 将需要在 macOS 运行的 `.ps1` 脚本迁移为等价 `.sh` 脚本。
-3. 更新文档里的命令示例，让 macOS 项目引用 `.sh` 入口。
-4. 确认委派脚本仍然只能由 Codex 子代理调用。
-5. 运行 macOS 下可运行的验证脚本。
-6. 如果暂时不能完整迁移某个验证脚本，明确说明缺口。
-
-macOS 子代理设置环境变量示例：
+在源仓库根目录执行：
 
 ```bash
-export CODEX_CLAUDE_CHILD_THREAD=1
+bash install_codex_with_cc.sh -t <target-project>
 ```
 
-macOS 委派入口可以命名为 `delegate_to_claude.sh` 或项目内更合适的名字。名字不重要，语义重要：主 Codex 线程不能直接运行它。
+安装器不支持把源仓库自身作为 `-t`；请使用外部目标项目目录，避免安装时移除源工作流目录。
+
+如果目标项目已经装过，直接再次执行同一条命令即可。安装脚本默认会先清理旧的 `docs/codex_with_cc` 和 `doc/codex_with_cc`，再按当前目录选择规则重装。
+
+如果用户没有额外限制，macOS 下默认动作应该是：
+
+1. 提问确认模型配置（按前文配置模型参数步骤修改目标脚本）。
+2. 直接执行安装脚本。
+3. 根据用户的模型选择更新 `macos_scripts/delegate_to_claude.sh`。
+4. 直接更新 `AGENTS.md`。
+5. 直接运行测试脚本验证运行环境：
+   - `bash <workflow-root>/macos_scripts/test_delegate_runtime.sh`
+   - `bash <workflow-root>/macos_scripts/test_delegate_session_pool.sh`
+6. 最后向用户汇报结果。
+
+如果不修改 `AGENTS.md`：
+
+```bash
+bash install_codex_with_cc.sh -t <target-project> --skip-agent-entrypoints
+```
+
+macOS 验证命令，在目标项目根目录执行：
+
+```bash
+bash <workflow-root>/macos_scripts/test_delegate_runtime.sh
+bash <workflow-root>/macos_scripts/test_delegate_session_pool.sh
+```
 
 ## 委派规则
 

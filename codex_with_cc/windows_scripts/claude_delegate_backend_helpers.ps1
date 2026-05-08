@@ -51,7 +51,7 @@ function Test-ClaudeDelegateTextHasFinalResultHeading {
     return $false
   }
 
-  return ($Text -match '(?m)^(?:#+\s*)?Final Result\s*$')
+  return ($Text -match '(?m)^\s*(?:#+\s*|\*\*|__)?Final Result(?:\*\*|__|:)?\s*$')
 }
 
 function Test-ClaudeDelegateHasFinalResult {
@@ -303,7 +303,7 @@ function Update-ClaudeDelegateStreamCapture {
 
 function New-ClaudeDelegateCliArgs {
   param(
-    [Parameter(Mandatory = $true)][string]$Model,
+    [string]$Model,
     [Parameter(Mandatory = $true)][string]$SessionName,
     [Parameter(Mandatory = $true)][string]$SessionId,
     [Parameter(Mandatory = $true)][bool]$Resume,
@@ -316,10 +316,13 @@ function New-ClaudeDelegateCliArgs {
     '--verbose',
     '--print',
     '--output-format', 'stream-json',
-    '--model', $Model,
     '--name', $SessionName,
     '--permission-mode', 'acceptEdits'
   )
+
+  if (-not [string]::IsNullOrWhiteSpace($Model)) {
+    $claudeArgs += @('--model', $Model)
+  }
 
   if ($Resume) {
     $claudeArgs += @('--resume', $SessionId)

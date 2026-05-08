@@ -2,3 +2,7 @@ build
 .idea
 .codex
 .claude
+lock_test*
+real_chain_test*
+test_expire*.sh
+claude-delegate/

@@ -9,7 +9,7 @@ param(
   [string[]]$Tests = @(),
   [ValidateSet('Implement', 'Fix', 'Review')]
   [string]$Mode = 'Implement',
-  [string]$Model = 'sonnet',
+  [string]$Model = '',
   [string]$Name,
   [string]$NamePrefix = 'codex-delegate',
   [Nullable[decimal]]$MaxBudgetUsd,
